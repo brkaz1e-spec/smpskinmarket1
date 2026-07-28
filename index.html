@@ -42,7 +42,7 @@
             box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
         }
 
-        /* 4. LAYOUT (Grid system so they sit neatly next to each other) */
+        /* 4. LAYOUT */
         #inventory {
             display: flex;
             flex-wrap: wrap;
@@ -52,28 +52,27 @@
             margin: 0 auto;
         }
 
-        /* 5. FANCY SKIN CARDS */
+        /* 5. SKIN CARDS */
         .skin-card {
             background: linear-gradient(145deg, #1a1a1a, #222222);
             border-radius: 12px;
             padding: 20px;
-            width: 220px;
+            width: 230px;
             text-align: center;
-            /* Cool 3D Shadow effect */
             box-shadow: 5px 5px 15px #070707, -5px -5px 15px #2d2d2d;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             position: relative;
             overflow: hidden;
-            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        /* Hover animation: Card floats up and glows */
         .skin-card:hover {
-            transform: translateY(-10px);
+            transform: translateY(-5px);
             box-shadow: 0 15px 30px rgba(0, 255, 204, 0.2);
         }
 
-        /* Rarity colors at the top of the card */
         .rarity-bar {
             height: 5px;
             width: 100%;
@@ -81,29 +80,125 @@
             top: 0;
             left: 0;
         }
-        
+
+        /* RARE BADGE & QUANTITY STYLING */
+        .rare-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background-color: rgba(255, 215, 0, 0.2);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+        }
+
         /* 6. IMAGE AND TEXT STYLING */
         .skin-card img {
             width: 100%;
-            height: 140px;
+            height: 130px;
             object-fit: contain;
             filter: drop-shadow(0 10px 8px rgba(0,0,0,0.6));
             transition: transform 0.3s ease;
+            margin-top: 10px;
         }
         .skin-card:hover img {
-            transform: scale(1.1); /* Image zooms in slightly on hover */
+            transform: scale(1.08);
         }
         .skin-name {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 600;
-            margin: 15px 0 5px;
+            margin: 12px 0 5px;
             color: #e0e0e0;
         }
         .skin-price {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             color: #00ffcc;
             font-weight: 900;
-            margin: 0;
+            margin-bottom: 15px;
+        }
+
+        /* GRAPH BUTTON STYLING */
+        .graph-btn {
+            background-color: #252525;
+            color: #00ffcc;
+            border: 1px solid #00ffcc;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .graph-btn:hover {
+            background-color: #00ffcc;
+            color: #121212;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        }
+
+        /* 7. GRAPH MODAL STYLING */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            padding: 25px;
+            position: relative;
+            box-shadow: 0 0 25px rgba(0,255,204,0.15);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .close-btn:hover {
+            color: #fff;
+        }
+
+        .modal-stats {
+            display: flex;
+            justify-content: space-between;
+            background: #222;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 0.95rem;
+        }
+
+        .stat-highlight {
+            color: #00ffcc;
+            font-weight: bold;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 220px !important;
+            background: #121212;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
         }
     </style>
 </head>
@@ -111,85 +206,225 @@
 
     <h1>Skin Price Checker</h1>
     
-    <!-- Added a functional search bar -->
     <div class="search-container">
         <input type="text" id="searchBox" placeholder="Search for a skin..." onkeyup="filterSkins()">
     </div>
 
     <div id="inventory"></div>
 
+    <!-- POPUP MODAL FOR GRAPH -->
+    <div id="graphModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modalSkinName" style="margin-top:0; color:#fff;">Skin Name</h2>
+            
+            <div class="modal-stats">
+                <div>First Price: <span id="modalOldPrice" class="stat-highlight">$0</span></div>
+                <div>Current Price: <span id="modalCurrentPrice" class="stat-highlight">$0</span></div>
+            </div>
+
+            <!-- Canvas element where price graph is drawn -->
+            <canvas id="priceCanvas" width="550" height="220"></canvas>
+        </div>
+    </div>
+
     <script>
         /* 
-           YOUR SAVED DATA: Notice I added "rarityColor" 
-           to make the top of the cards match the skin rarity!
+           EDIT YOUR SKINS HERE:
+           - priceHistory: [oldest price, ..., newest price]. The LAST number is automatically the CURRENT price.
+           - rare: true / false (If true, shows a rare tag with quantity)
+           - quantity: Number of items owned
         */
         const mySkins = [
             {
                 name: "Pickaxe | Shadows",
-                price: "$2,544,999.00",
+                priceHistory: [1500000, 1800000, 2100000, 2300000, 2544999], // Edit prices here
                 icon: "Images/shadow_pickaxe.jpg",
-                rarityColor: "#eb4b4b" /* Red (Covert) */
+                rarityColor: "#eb4b4b", /* Red (Covert) */
+                rare: true,
+                quantity: 1
             },
             {
                 name: "AWP | Asiimov",
-                price: "$185.32",
+                priceHistory: [21, 55, 124, 106, 205], // Edit prices here! Last one (205) is current price.
                 icon: "Images/awp.jpg",
-                rarityColor: "#eb4b4b" /* Red (Covert) */
+                rarityColor: "#eb4b4b",
+                rare: true,
+                quantity: 4
             },
             {
                 name: "M4A4 | Neo-Noir",
-                price: "$20.00",
+                priceHistory: [35.00, 28.50, 24.00, 20.00],
                 icon: "Images/m4a4.jpg",
-                rarityColor: "#d32ce6" /* Pink (Classified) */
+                rarityColor: "#d32ce6", /* Pink (Classified) */
+                rare: false,
+                quantity: 1
             },
             {
                 name: "Glock-18 | Water Elemental",
-                price: "$10.00",
+                priceHistory: [4.20, 6.50, 8.10, 10.00],
                 icon: "Images/glock.jpg",
-                rarityColor: "#d32ce6" 
+                rarityColor: "#d32ce6",
+                rare: false,
+                quantity: 2
             },
             {
                 name: "USP-S | Cyrex",
-                price: "$5.50",
+                priceHistory: [12.00, 9.50, 7.00, 5.50],
                 icon: "Images/usps.jpg",
-                rarityColor: "#8847ff" /* Purple (Restricted) */
+                rarityColor: "#8847ff", /* Purple (Restricted) */
+                rare: false,
+                quantity: 1
             }
         ];
 
         const inventoryDiv = document.getElementById("inventory");
 
-        // Function to draw the skins on the screen
-        function displaySkins(skinsToDisplay) {
-            inventoryDiv.innerHTML = ""; // Clear the screen first
+        // Helper function to format numbers as currency
+        function formatPrice(val) {
+            return "$" + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
 
-            for (let i = 0; i < skinsToDisplay.length; i++) {
+        // Display skins on page
+        function displaySkins(skinsToDisplay) {
+            inventoryDiv.innerHTML = "";
+
+            for (let i = 0; i < mySkins.length; i++) {
+                // Determine index in original array for the modal
+                let originalIndex = mySkins.indexOf(skinsToDisplay[i]);
                 let skin = skinsToDisplay[i];
                 
+                // Get current price (last index)
+                let currentPrice = skin.priceHistory[skin.priceHistory.length - 1];
+
+                // Check if rare to show quantity badge
+                let rareBadgeHTML = skin.rare 
+                    ? `<div class="rare-badge">Rare x${skin.quantity}</div>` 
+                    : ``;
+
                 inventoryDiv.innerHTML += `
                     <div class="skin-card">
                         <div class="rarity-bar" style="background-color: ${skin.rarityColor};"></div>
+                        ${rareBadgeHTML}
                         <img src="${skin.icon}" alt="Skin Image">
                         <div class="skin-name">${skin.name}</div>
-                        <div class="skin-price">${skin.price}</div>
+                        <div class="skin-price">${formatPrice(currentPrice)}</div>
+                        <button class="graph-btn" onclick="openGraphModal(${originalIndex})">📈 Price Graph</button>
                     </div>
                 `;
             }
         }
 
-        // Draw all skins when you first open the website
+        // Draw skins on load
         displaySkins(mySkins);
 
-        // Function to make the Search Bar work!
+        // Filter skins on search
         function filterSkins() {
             let searchInput = document.getElementById("searchBox").value.toLowerCase();
-            
-            // Find skins that match what you typed
             let filteredSkins = mySkins.filter(skin => 
                 skin.name.toLowerCase().includes(searchInput)
             );
-            
-            // Draw only the matching skins
             displaySkins(filteredSkins);
+        }
+
+        /* --- GRAPH MODAL LOGIC --- */
+        const modal = document.getElementById("graphModal");
+
+        function openGraphModal(index) {
+            let skin = mySkins[index];
+            let prices = skin.priceHistory;
+
+            let firstPrice = prices[0];
+            let currentPrice = prices[prices.length - 1];
+
+            document.getElementById("modalSkinName").innerText = skin.name;
+            document.getElementById("modalOldPrice").innerText = formatPrice(firstPrice);
+            document.getElementById("modalCurrentPrice").innerText = formatPrice(currentPrice);
+
+            modal.style.display = "flex";
+
+            // Render graph on canvas
+            drawGraph(prices);
+        }
+
+        function closeModal() {
+            modal.style.display = "none";
+        }
+
+        // Close modal when clicking outside content box
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        // Custom Steam-style canvas line chart renderer
+        function drawGraph(prices) {
+            const canvas = document.getElementById("priceCanvas");
+            const ctx = canvas.getContext("2d");
+
+            // Clear previous drawing
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const padding = 35;
+            const width = canvas.width - (padding * 2);
+            const height = canvas.height - (padding * 2);
+
+            const min = Math.min(...prices);
+            const max = Math.max(...prices);
+            const range = (max - min) || 1;
+
+            // Draw Background Grid Lines
+            ctx.strokeStyle = "#222";
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                let y = padding + (height / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+            }
+
+            // Points calculation
+            const points = prices.map((price, index) => {
+                const x = padding + (index / (prices.length - 1 || 1)) * width;
+                const y = canvas.height - padding - ((price - min) / range) * height;
+                return { x, y, price };
+            });
+
+            // Draw Area Fill under graph line
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, canvas.height - padding);
+            points.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.lineTo(points[points.length - 1].x, canvas.height - padding);
+            ctx.closePath();
+            
+            let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, "rgba(0, 255, 204, 0.25)");
+            gradient.addColorStop(1, "rgba(0, 255, 204, 0.0)");
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Draw Graph Line
+            ctx.beginPath();
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 3;
+            points.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.stroke();
+
+            // Draw Point Dots & Labels
+            points.forEach((p) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+                ctx.strokeStyle = "#00ffcc";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
         }
     </script>
 
